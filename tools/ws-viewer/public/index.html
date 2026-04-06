@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ESP32-CAM 双路预览</title>
+    <style>
+      :root {
+        --bg: radial-gradient(circle at 15% 20%, #1f3b6b, #0d1624 40%, #090f17 100%);
+        --panel: rgba(11, 21, 35, 0.76);
+        --line: rgba(255, 255, 255, 0.16);
+        --text: #e9f2ff;
+        --muted: #9fb2ce;
+        --ok: #2fd38b;
+        --warn: #ffb347;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+        color: var(--text);
+        background: var(--bg);
+      }
+
+      .wrap {
+        width: min(1200px, 95vw);
+        margin: 32px auto;
+      }
+
+      .head {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: end;
+        margin-bottom: 18px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(24px, 3vw, 38px);
+        letter-spacing: 0.03em;
+      }
+
+      .sub {
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        backdrop-filter: blur(8px);
+        box-shadow: 0 14px 32px rgba(0, 0, 0, 0.26);
+      }
+
+      .ctrl {
+        padding: 14px;
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        gap: 10px;
+      }
+
+      input {
+        border: 1px solid var(--line);
+        background: rgba(8, 16, 28, 0.9);
+        color: var(--text);
+        border-radius: 10px;
+        padding: 10px 12px;
+        width: 100%;
+      }
+
+      button {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 10px 14px;
+        color: var(--text);
+        background: linear-gradient(135deg, #275ca8, #1e4278);
+        cursor: pointer;
+      }
+
+      button.secondary {
+        background: rgba(255, 255, 255, 0.08);
+      }
+
+      .status {
+        margin-top: 12px;
+        color: var(--muted);
+      }
+
+      .status b {
+        color: var(--ok);
+      }
+
+      .grid {
+        margin-top: 16px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 16px;
+      }
+
+      .card {
+        overflow: hidden;
+      }
+
+      .card-head {
+        padding: 10px 12px;
+        display: flex;
+        justify-content: space-between;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .cam-title {
+        font-weight: 700;
+      }
+
+      .cam-ts {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .view {
+        aspect-ratio: 4/3;
+        background: linear-gradient(180deg, #111a28, #0a101a);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .view img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+
+      .empty {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .meta {
+        border-top: 1px solid var(--line);
+        padding: 10px 12px;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .log {
+        margin-top: 16px;
+        max-height: 170px;
+        overflow: auto;
+        padding: 10px 12px;
+        font-size: 12px;
+        line-height: 1.5;
+        color: #b5c9e6;
+      }
+
+      @media (max-width: 640px) {
+        .ctrl {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="head">
+        <div>
+          <h1>ESP32-CAM 双路实时预览</h1>
+          <div class="sub">浏览器连接中转服务，按 camera_id 自动分栏显示</div>
+        </div>
+      </div>
+
+      <div class="panel ctrl">
+        <input id="wsUrl" value="ws://127.0.0.1:9001/viewer" />
+        <button id="btnConnect">连接</button>
+        <button id="btnDisconnect" class="secondary">断开</button>
+      </div>
+
+      <div class="status" id="status">状态: 未连接</div>
+      <div class="grid" id="grid"></div>
+      <div class="panel log" id="log"></div>
+    </div>
+
+    <script>
+      const statusEl = document.getElementById('status');
+      const gridEl = document.getElementById('grid');
+      const logEl = document.getElementById('log');
+      const wsUrlEl = document.getElementById('wsUrl');
+      const btnConnect = document.getElementById('btnConnect');
+      const btnDisconnect = document.getElementById('btnDisconnect');
+
+      let ws = null;
+      let pendingMeta = null;
+      const cards = new Map();
+
+      function log(msg) {
+        const ts = new Date().toLocaleTimeString();
+        logEl.textContent = `[${ts}] ${msg}\n` + logEl.textContent;
+      }
+
+      function setStatus(text, connected = false) {
+        statusEl.innerHTML = `状态: ${connected ? '<b>已连接</b>' : text}`;
+        if (!connected) {
+          statusEl.textContent = `状态: ${text}`;
+        }
+      }
+
+      function ensureCard(cameraId) {
+        if (cards.has(cameraId)) {
+          return cards.get(cameraId);
+        }
+
+        const card = document.createElement('section');
+        card.className = 'panel card';
+        card.innerHTML = `
+          <div class="card-head">
+            <div class="cam-title">Camera ${cameraId}</div>
+            <div class="cam-ts">暂无帧</div>
+          </div>
+          <div class="view"><div class="empty">等待图像...</div></div>
+          <div class="meta">
+            <div>user_id: -</div>
+            <div>len: -</div>
+            <div>fps: -</div>
+            <div>ts: -</div>
+          </div>
+        `;
+
+        gridEl.appendChild(card);
+
+        const obj = {
+          root: card,
+          tsEl: card.querySelector('.cam-ts'),
+          viewEl: card.querySelector('.view'),
+          metaEl: card.querySelector('.meta'),
+          lastFrameAt: 0,
+          fps: 0
+        };
+
+        cards.set(cameraId, obj);
+        return obj;
+      }
+
+      function renderJpeg(meta, buffer) {
+        const cameraId = meta.camera_id;
+        const card = ensureCard(cameraId);
+        const now = performance.now();
+        if (card.lastFrameAt > 0) {
+          const dt = (now - card.lastFrameAt) / 1000;
+          card.fps = dt > 0 ? 1 / dt : 0;
+        }
+        card.lastFrameAt = now;
+
+        const blob = new Blob([buffer], { type: 'image/jpeg' });
+        const url = URL.createObjectURL(blob);
+        const img = new Image();
+        img.onload = () => URL.revokeObjectURL(url);
+        img.src = url;
+
+        card.viewEl.innerHTML = '';
+        card.viewEl.appendChild(img);
+
+        const t = new Date(Number(meta.ts || Date.now()));
+        card.tsEl.textContent = `${t.toLocaleTimeString()} 更新`;
+        card.metaEl.innerHTML = `
+          <div>user_id: ${meta.user_id ?? '-'}</div>
+          <div>len: ${meta.len ?? '-'}</div>
+          <div>fps: ${card.fps ? card.fps.toFixed(1) : '-'}</div>
+          <div>ts: ${meta.ts ?? '-'}</div>
+        `;
+      }
+
+      function renderSnapshot(msg) {
+        const bytes = Uint8Array.from(atob(msg.jpeg_base64), c => c.charCodeAt(0));
+        renderJpeg(msg, bytes.buffer);
+      }
+
+      function connect() {
+        if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+          return;
+        }
+
+        const url = wsUrlEl.value.trim();
+        ws = new WebSocket(url);
+        ws.binaryType = 'arraybuffer';
+        setStatus('连接中...');
+
+        ws.onopen = () => {
+          setStatus('已连接', true);
+          log(`connected: ${url}`);
+        };
+
+        ws.onclose = () => {
+          setStatus('已断开');
+          pendingMeta = null;
+          log('disconnected');
+        };
+
+        ws.onerror = () => {
+          setStatus('连接错误');
+          log('socket error');
+        };
+
+        ws.onmessage = (ev) => {
+          if (typeof ev.data === 'string') {
+            let msg;
+            try {
+              msg = JSON.parse(ev.data);
+            } catch {
+              log('invalid json from relay');
+              return;
+            }
+
+            if (msg.type === 'viewer_frame_meta') {
+              pendingMeta = msg;
+              return;
+            }
+
+            if (msg.type === 'viewer_snapshot') {
+              renderSnapshot(msg);
+              return;
+            }
+
+            if (msg.type === 'viewer_hello') {
+              log(`viewer hello, cameras=${(msg.cameras || []).join(',')}`);
+            }
+            return;
+          }
+
+          if (ev.data instanceof ArrayBuffer) {
+            if (!pendingMeta) {
+              log('dropped binary: no pending meta');
+              return;
+            }
+
+            renderJpeg(pendingMeta, ev.data);
+            pendingMeta = null;
+          }
+        };
+      }
+
+      function disconnect() {
+        if (ws) {
+          ws.close();
+        }
+      }
+
+      btnConnect.addEventListener('click', connect);
+      btnDisconnect.addEventListener('click', disconnect);
+    </script>
+  </body>
+</html>
