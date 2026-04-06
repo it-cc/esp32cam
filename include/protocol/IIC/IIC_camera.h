@@ -1,0 +1,38 @@
+#ifndef IIC_CAMERA_H
+#define IIC_CAMERA_H
+
+#include <Wire.h>
+
+#include <cstdint>
+
+namespace esp32camera
+{
+struct __attribute__((packed)) CameraPackage
+{
+  uint8_t userID;
+  char ssid[32];
+  char password[32];
+};
+struct __attribute__((packed)) SalveStatus
+{
+  uint8_t isReceived;   // 0x01
+  uint8_t isSetWifi;    // 0x02
+  uint8_t isgetUserID;  // 0x04
+};
+class CameraIIC
+{
+ public:
+  CameraIIC(uint8_t slaveAddress, int sdaPin, int sclPin, uint32_t frequency);
+  CameraPackage getCameraPackage() const;
+
+ private:
+  static void onRequestCallback();
+  static void onReceiveCallback(int numBytes);
+  static CameraIIC* instance_;
+
+  CameraPackage cameraPacket_;
+  SalveStatus salveStatus_;
+  volatile bool isReceived_;
+};
+}  // namespace esp32camera
+#endif  // IIC_CAMERA_H
