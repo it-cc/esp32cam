@@ -42,11 +42,17 @@ void CameraIIC::onReceiveCallback(int numBytes)
     {
       *p++ = Wire.read();
     }
-    instance_->salveStatus_.isReceived = 0x01;
-    instance_->salveStatus_.isSetWifi = 0x02;
-    instance_->salveStatus_.isgetUserID = 0x04;
-
     instance_->isReceived_ = true;
+    instance_->salveStatus_.isReceived = 0x01;
+    instance_->salveStatus_.isgetUserID = 0x04;
+    strncpy(instance_->salveStatus_.ssid, instance_->cameraPacket_.ssid,
+            sizeof(instance_->salveStatus_.ssid));
+    instance_->salveStatus_.ssid[sizeof(instance_->salveStatus_.ssid) - 1] =
+        '\0';
+    strncpy(instance_->salveStatus_.password, instance_->cameraPacket_.password,
+            sizeof(instance_->salveStatus_.password));
+    instance_->salveStatus_
+        .password[sizeof(instance_->salveStatus_.password) - 1] = '\0';
   }
   else
   {
@@ -57,9 +63,6 @@ void CameraIIC::onReceiveCallback(int numBytes)
   }
 }
 
-CameraPackage CameraIIC::getCameraPackage() const
-{
-  return cameraPacket_;
-}
+CameraPackage CameraIIC::getCameraPackage() const { return cameraPacket_; }
 
 }  // namespace esp32camera

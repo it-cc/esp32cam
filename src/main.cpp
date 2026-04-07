@@ -27,16 +27,23 @@ void setup()
                                           IIC_SCL_PIN, IIC_FREQUENCY);
   (void)cameraIIC;
 
-  esp32camera::CameraPackage cameraPackage = cameraIIC.getCameraPackage();
-
-  WiFi.begin(cameraPackage.ssid, cameraPackage.password);
   Serial.println("Connecting to WiFi");
   while (WiFi.status() != WL_CONNECTED)
   {
-    delay(1000);
-    Serial.println(".");
+    esp32camera::CameraPackage cameraPackage = cameraIIC.getCameraPackage();
+    WiFi.begin(cameraPackage.ssid, cameraPackage.password);
+    delay(2000);
+    Serial.print(".");
   }
-  Serial.println("Connected to WiFi");
+  cameraIIC.instance_->salveStatus_.isSetWifi = 0x02;
+  strncpy(cameraIIC.instance_->salveStatus_.httpUrl, "http://",
+          sizeof(cameraIIC.instance_->salveStatus_.httpUrl));
+  strcat(cameraIIC.instance_->salveStatus_.httpUrl,
+         WiFi.localIP().toString().c_str());
+  Serial.println("");
+  Serial.println("Connected to WiFi!");
+  Serial.print("Access the camera stream at: http://");
+  Serial.println(WiFi.localIP());
 
   g_app.setup();
 }

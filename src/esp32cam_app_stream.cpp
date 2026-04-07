@@ -26,7 +26,7 @@ void Esp32CamApp::sendFrameWithMeta()
     return;
   }
 
-  if (millis() - lastFrameMs_ < 150)
+  if (millis() - lastFrameMs_ < 100)
   {
     return;
   }
