@@ -1,3 +1,6 @@
+#ifndef CAMERA_WEBSERVER_H
+#define CAMERA_WEBSERVER_H
+
 #include <Arduino.h>
 #include <WiFi.h>
 
@@ -8,16 +11,10 @@
 // ===========================
 #include "camera/board_config.h"
 
-// ===========================
-// Enter your WiFi credentials
-// ===========================
-const char *ssid = "Redmi";
-const char *password = "88889999";
-
 void startCameraServer();
 void setupLedFlash();
 
-void init()
+void cameraInit()
 {
   Serial.begin(115200);
   Serial.setDebugOutput(true);
@@ -71,7 +68,7 @@ void init()
   else
   {
     // Best option for face detection/recognition
-    config.frame_size = FRAMESIZE_240X240;
+    config.frame_size = FRAMESIZE_VGA;
 #if CONFIG_IDF_TARGET_ESP32S3
     config.fb_count = 2;
 #endif
@@ -117,28 +114,7 @@ void init()
 #if defined(LED_GPIO_NUM)
   setupLedFlash();
 #endif
-
-  WiFi.begin(ssid, password);
-  WiFi.setSleep(false);
-
-  Serial.print("WiFi connecting");
-  while (WiFi.status() != WL_CONNECTED)
-  {
-    delay(500);
-    Serial.print(".");
-  }
-  Serial.println("");
-  Serial.println("WiFi connected");
-
   startCameraServer();
-
-  Serial.print("Camera Ready! Use 'http://");
-  Serial.print(WiFi.localIP());
-  Serial.println("' to connect");
 }
 
-void run()
-{
-  // Do nothing. Everything is done in another task by the web server
-  delay(10000);
-}
+#endif  // CAMERA_WEBSERVER_H
