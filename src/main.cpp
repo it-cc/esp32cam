@@ -1,7 +1,6 @@
 #include <Arduino.h>
 #include <WiFi.h>
 
-#include "esp32cam_app.h"
 #include "protocol/IIC/IIC_camera.h"
 
 #define CAMERA1_IIC_ADDRESS 0x42
@@ -9,11 +8,6 @@
 #define IIC_SCL_PIN 15
 #define IIC_SDA_PIN 14
 #define IIC_FREQUENCY 100000
-
-namespace
-{
-Esp32CamApp g_app;
-}
 
 void setup()
 {
@@ -44,8 +38,6 @@ void setup()
   Serial.println("Connected to WiFi!");
   Serial.print("Access the camera stream at: http://");
   Serial.println(WiFi.localIP());
-
-  g_app.setup();
 }
 
-void loop() { g_app.loop(); }
+void loop() {}
