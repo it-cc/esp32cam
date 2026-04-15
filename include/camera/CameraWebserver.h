@@ -16,10 +16,6 @@ void setupLedFlash();
 
 void cameraInit()
 {
-  Serial.begin(115200);
-  Serial.setDebugOutput(true);
-  Serial.println();
-
   camera_config_t config;
   config.ledc_channel = LEDC_CHANNEL_0;
   config.ledc_timer = LEDC_TIMER_0;
@@ -89,7 +85,7 @@ void cameraInit()
 
   sensor_t *s = esp_camera_sensor_get();
   // initial sensors are flipped vertically and colors are a bit saturated
-  if (s->id.PID == OV2640_PID)
+  if (s->id.PID == OV5640_PID)
   {
     s->set_vflip(s, 1);        // flip it back
     s->set_brightness(s, 1);   // up the brightness just a bit

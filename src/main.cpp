@@ -1,9 +1,9 @@
 #include <Arduino.h>
 #include <WiFi.h>
 
+#include "WiFi.h"
 #include "camera/CameraWebserver.h"
 #include "protocol/IIC/IIC_camera.h"
-
 #define CAMERA 1
 #if CAMERA == 1
 #define CAMERA_IIC_ADDRESS 0x42
@@ -15,30 +15,32 @@
 #define IIC_SDA_PIN 14
 #define IIC_FREQUENCY 100000
 
+static const char *kWifiSsid = "Redmi";
+static const char *kWifiPassword = "88889999";
+static const uint32_t kWifiConnectTimeoutMs = 30000;
+
 void setup()
 {
-  // Keep the IIC slave object alive for the full application lifetime.
-  static esp32camera::CameraIIC cameraIIC(CAMERA_IIC_ADDRESS, IIC_SDA_PIN,
-                                          IIC_SCL_PIN, IIC_FREQUENCY);
-  (void)cameraIIC;
+  Serial.begin(115200);
+  Serial.setDebugOutput(true);
+  Serial.println();
 
-  Serial.println("Connecting to WiFi");
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(kWifiSsid, kWifiPassword);
+  uint32_t startMs = millis();
   while (WiFi.status() != WL_CONNECTED)
   {
-    esp32camera::CameraPackage cameraPackage = cameraIIC.getCameraPackage();
-    WiFi.begin(cameraPackage.ssid, cameraPackage.password);
-    delay(2000);
-    Serial.print(".");
+    Serial.printf("Connecting to WiFi (%s), status=%d ...\n", kWifiSsid,
+                  WiFi.status());
+    if (millis() - startMs > kWifiConnectTimeoutMs)
+    {
+      Serial.println("WiFi connect timeout, restarting...");
+      ESP.restart();
+    }
+    delay(1000);
   }
-  cameraIIC.instance_->salveStatus_.isSetWifi = 0x02;
-  strncpy(cameraIIC.instance_->salveStatus_.httpUrl, "http://",
-          sizeof(cameraIIC.instance_->salveStatus_.httpUrl));
-  strcat(cameraIIC.instance_->salveStatus_.httpUrl,
-         WiFi.localIP().toString().c_str());
   Serial.println("Connected to WiFi!");
-  Serial.print("Access the camera stream at: http://");
-  Serial.println(WiFi.localIP());
-
+  Serial.printf("IP: %s\n", WiFi.localIP().toString().c_str());
   // Start the camera web server.
   cameraInit();
 }
