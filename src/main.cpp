@@ -25,6 +25,13 @@ void setup()
   Serial.setDebugOutput(true);
   Serial.println();
 
+  Serial.printf("CPU freq before set: %u MHz\n", getCpuFrequencyMhz());
+  if (!setCpuFrequencyMhz(240))
+  {
+    Serial.println("Failed to set CPU freq to 240 MHz");
+  }
+  Serial.printf("CPU freq after set: %u MHz\n", getCpuFrequencyMhz());
+
   WiFi.mode(WIFI_STA);
   WiFi.begin(kWifiSsid, kWifiPassword);
   uint32_t startMs = millis();
