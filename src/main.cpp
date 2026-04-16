@@ -18,6 +18,7 @@ void setup()
   while (WiFi.status() != WL_CONNECTED)
   {
     Serial.print(".");
+    delay(1000);
   }
   Serial.println("Connected to WiFi!");
   Serial.printf("IP: %s\n", WiFi.localIP().toString().c_str());
@@ -26,18 +27,18 @@ void setup()
   cameraInit(false);
 
   // http client test
-  esp32camera::clientConfig clientCfg{
-      .serverURL = esp32camera::serverURL,
-      .headValue = esp32camera::headValue,
-      .queryKey = esp32camera::queryKey,
-      .queryValue = esp32camera::queryValue,
-  };
-  esp32camera::cameraClient camClient(clientCfg);
+  // static esp32camera::clientConfig clientCfg{
+  //     .serverURL = esp32camera::serverURL,
+  //     .headValue = esp32camera::headValue,
+  //     .queryKey = esp32camera::queryKey,
+  //     .queryValue = esp32camera::queryValue,
+  // };
+  // static esp32camera::cameraClient camClient(clientCfg);
 
   // websocket client test
-  esp32camera::WebsocketClient webSocketClient(esp32camera::webSocket_host,
-                                               esp32camera::webSocket_port,
-                                               esp32camera::webSocket_path);
+  static esp32camera::WebsocketClient webSocketClient(
+      esp32camera::webSocket_host, esp32camera::webSocket_port,
+      esp32camera::webSocket_path);
 }
 
 void loop() {}

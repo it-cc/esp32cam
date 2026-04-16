@@ -50,7 +50,7 @@ void cameraInit(bool startWebServer = true)
   {
     if (psramFound())
     {
-      config.jpeg_quality = 10;
+      config.jpeg_quality = 4;
       config.fb_count = 2;
       config.grab_mode = CAMERA_GRAB_LATEST;
     }
@@ -74,6 +74,9 @@ void cameraInit(bool startWebServer = true)
   pinMode(13, INPUT_PULLUP);
   pinMode(14, INPUT_PULLUP);
 #endif
+
+  Serial.printf("frame_size: %u, jpeg_quality: %u, fb_count: %u,\n",
+                config.frame_size, config.jpeg_quality, config.fb_count);
 
   // camera init
   esp_err_t err = esp_camera_init(&config);

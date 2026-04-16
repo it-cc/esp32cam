@@ -6,7 +6,7 @@ CameraIIC* CameraIIC::instance_ = nullptr;
 
 CameraIIC::CameraIIC(uint8_t slaveAddress, int sdaPin, int sclPin,
                      uint32_t frequency)
-    : cameraPacket_(), salveStatus_(), isReceived_(false)
+    : cameraPacket_(), salveStatus_()
 {
   instance_ = this;
   Wire.begin(slaveAddress, sdaPin, sclPin, frequency);
@@ -37,14 +37,17 @@ void CameraIIC::onReceiveCallback(int numBytes)
 
   if (numBytes == sizeof(CameraPackage))
   {
+    instance_->salveStatus_.isReceived = 0x01;  // Mark as received
+
+    // Read the incoming data directly into the cameraPacket_ structure
     uint8_t* p = (uint8_t*)&instance_->cameraPacket_;
     while (Wire.available())
     {
       *p++ = Wire.read();
     }
-    instance_->isReceived_ = true;
-    instance_->salveStatus_.isReceived = 0x01;
-    instance_->salveStatus_.isgetUserID = 0x04;
+
+    // Safely copy the received SSID and password into the salveStatus_
+    // structure
     strncpy(instance_->salveStatus_.ssid, instance_->cameraPacket_.ssid,
             sizeof(instance_->salveStatus_.ssid));
     instance_->salveStatus_.ssid[sizeof(instance_->salveStatus_.ssid) - 1] =
@@ -53,6 +56,8 @@ void CameraIIC::onReceiveCallback(int numBytes)
             sizeof(instance_->salveStatus_.password));
     instance_->salveStatus_
         .password[sizeof(instance_->salveStatus_.password) - 1] = '\0';
+
+    instance_->salveStatus_.isAllReady = 0x02;  // Mark as all ready
   }
   else
   {

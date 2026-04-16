@@ -65,6 +65,7 @@ void WebsocketClient::run()
 {
   if (webSocket_.isConnected())
   {
+    webSocket_.sendTXT(R"({"authorization":1,"position":"0"})");  // JSON
     camera_fb_t* fb = esp_camera_fb_get();
     if (fb)
     {

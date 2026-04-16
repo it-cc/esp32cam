@@ -15,9 +15,8 @@ struct __attribute__((packed)) CameraPackage
 };
 struct __attribute__((packed)) SalveStatus
 {
-  uint8_t isReceived;   // 0x01
-  uint8_t isSetWifi;    // 0x02
-  uint8_t isgetUserID;  // 0x04
+  uint8_t isReceived;  // 0x01
+  uint8_t isAllReady;  // 0x02
   char ssid[32];
   char password[32];
   char httpUrl[64];
@@ -29,7 +28,6 @@ class CameraIIC
   CameraPackage getCameraPackage() const;
   static CameraIIC* instance_;
   SalveStatus salveStatus_;
-  volatile bool isReceived_;
 
  private:
   static void onRequestCallback();
