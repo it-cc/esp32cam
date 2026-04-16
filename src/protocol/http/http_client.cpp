@@ -17,19 +17,27 @@ cameraClient::cameraClient(const clientConfig &clientCfg)
         cameraClient *client = static_cast<cameraClient *>(param);
         String response;
         int statusCode;
+        unsigned long lastPrintTime = 0;
         while (true)
         {
-          if (client->postRequest(response, statusCode))
+          bool success = client->postRequest(response, statusCode);
+
+          // 使用 millis() 限制打印频率，比如每 1000ms (1秒) 输出一次
+          if (millis() - lastPrintTime >= 1000)
           {
-            Serial.println("Request successful!");
-            Serial.printf("Response: %s\n", response.c_str());
-            Serial.printf("Status Code: %d\n", statusCode);
-          }
-          else
-          {
-            Serial.println("Request failed!");
-            Serial.printf("Response: %s\n", response.c_str());
-            Serial.printf("Status Code: %d\n", statusCode);
+            lastPrintTime = millis();
+            if (success)
+            {
+              Serial.println("Request successful!");
+              Serial.printf("Response: %s\n", response.c_str());
+              Serial.printf("Status Code: %d\n", statusCode);
+            }
+            else
+            {
+              Serial.println("Request failed!");
+              Serial.printf("Response: %s\n", response.c_str());
+              Serial.printf("Status Code: %d\n", statusCode);
+            }
           }
           vTaskDelay(pdMS_TO_TICKS(33));
         }

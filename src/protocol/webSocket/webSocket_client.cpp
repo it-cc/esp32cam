@@ -22,21 +22,16 @@ WebsocketClient::WebsocketClient(const char* webSocket_host,
         while (true)
         {
           client->webSocket_.loop();
+          static uint32_t last_run = 0;
+          if (millis() - last_run >= 33)
+          {
+            last_run = millis();
+            client->run();
+          }
           vTaskDelay(pdMS_TO_TICKS(1));
         }
       },
-      "WebsocketLoopTask", 4096, this, 1, nullptr);
-  xTaskCreate(
-      [](void* param)
-      {
-        WebsocketClient* client = static_cast<WebsocketClient*>(param);
-        while (true)
-        {
-          client->run();
-          vTaskDelay(pdMS_TO_TICKS(33));  // ~30 FPS
-        }
-      },
-      "WebsocketClientTask", 4096, this, 1, nullptr);
+      "WebsocketClientTask", 8192, this, 1, nullptr);
 }
 
 void WebsocketClient::webSocketEvent(WStype_t type, uint8_t* payload,
