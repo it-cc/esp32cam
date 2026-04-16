@@ -1,23 +1,10 @@
 #include <Arduino.h>
 #include <WiFi.h>
 
-#include "WiFi.h"
 #include "camera/CameraWebserver.h"
-#include "protocol/IIC/IIC_camera.h"
-#define CAMERA 1
-#if CAMERA == 1
-#define CAMERA_IIC_ADDRESS 0x42
-#elif CAMERA == 2
-#define CAMERA_IIC_ADDRESS 0x43
-#endif
-
-#define IIC_SCL_PIN 15
-#define IIC_SDA_PIN 14
-#define IIC_FREQUENCY 100000
-
-static const char *kWifiSsid = "Redmi";
-static const char *kWifiPassword = "88889999";
-static const uint32_t kWifiConnectTimeoutMs = 30000;
+#include "config/app_config.h"
+#include "protocol/http/http_client.h"
+#include "protocol/webSocket/webSocket_client.h"
 
 void setup()
 {
@@ -25,31 +12,32 @@ void setup()
   Serial.setDebugOutput(true);
   Serial.println();
 
-  Serial.printf("CPU freq before set: %u MHz\n", getCpuFrequencyMhz());
-  if (!setCpuFrequencyMhz(240))
-  {
-    Serial.println("Failed to set CPU freq to 240 MHz");
-  }
-  Serial.printf("CPU freq after set: %u MHz\n", getCpuFrequencyMhz());
-
   WiFi.mode(WIFI_STA);
-  WiFi.begin(kWifiSsid, kWifiPassword);
+  WiFi.begin(esp32camera::WifiSsid.c_str(), esp32camera::WifiPassword.c_str());
   uint32_t startMs = millis();
   while (WiFi.status() != WL_CONNECTED)
   {
-    Serial.printf("Connecting to WiFi (%s), status=%d ...\n", kWifiSsid,
-                  WiFi.status());
-    if (millis() - startMs > kWifiConnectTimeoutMs)
-    {
-      Serial.println("WiFi connect timeout, restarting...");
-      ESP.restart();
-    }
-    delay(1000);
+    Serial.print(".");
   }
   Serial.println("Connected to WiFi!");
   Serial.printf("IP: %s\n", WiFi.localIP().toString().c_str());
-  // Start the camera web server.
-  cameraInit();
+
+  // Initialize camera only; skip local web server when running as HTTP client.
+  cameraInit(false);
+
+  // http client test
+  esp32camera::clientConfig clientCfg{
+      .serverURL = esp32camera::serverURL,
+      .headValue = esp32camera::headValue,
+      .queryKey = esp32camera::queryKey,
+      .queryValue = esp32camera::queryValue,
+  };
+  esp32camera::cameraClient camClient(clientCfg);
+
+  // websocket client test
+  esp32camera::WebsocketClient webSocketClient(esp32camera::webSocket_host,
+                                               esp32camera::webSocket_port,
+                                               esp32camera::webSocket_path);
 }
 
-void loop() { delay(10000); }
+void loop() {}

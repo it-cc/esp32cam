@@ -1,0 +1,102 @@
+#include "protocol/http/http_client.h"
+
+#include <WiFi.h>
+
+#include "esp_camera.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
+namespace esp32camera
+{
+cameraClient::cameraClient(const clientConfig &clientCfg)
+    : clientCfg_(clientCfg)
+{
+  xTaskCreate(
+      [](void *param)
+      {
+        cameraClient *client = static_cast<cameraClient *>(param);
+        String response;
+        int statusCode;
+        while (true)
+        {
+          if (client->postRequest(response, statusCode))
+          {
+            Serial.println("Request successful!");
+            Serial.printf("Response: %s\n", response.c_str());
+            Serial.printf("Status Code: %d\n", statusCode);
+          }
+          else
+          {
+            Serial.println("Request failed!");
+            Serial.printf("Response: %s\n", response.c_str());
+            Serial.printf("Status Code: %d\n", statusCode);
+          }
+          vTaskDelay(pdMS_TO_TICKS(33));
+        }
+      },
+      "HTTPClientTask", 4096, this, 1, NULL);
+}
+
+bool cameraClient::postRequest(String &responseOut, int &statusCodeOut)
+{
+  if (WiFi.status() != WL_CONNECTED)
+  {
+    statusCodeOut = -1;
+    responseOut = "wifi not connected";
+    return false;
+  }
+  String url = clientCfg_.serverURL + "?" + clientCfg_.queryKey + "=" +
+               String(clientCfg_.queryValue);
+  http_.begin(url);
+  http_.addHeader("authorization", clientCfg_.headValue);
+  http_.addHeader("Content-Type", "image/jpeg");
+
+  camera_fb_t *fb = esp_camera_fb_get();
+
+  int httpResponseCode = http_.POST(fb->buf, fb->len);
+
+  esp_camera_fb_return(fb);
+
+  if (httpResponseCode > 0)
+  {
+    statusCodeOut = httpResponseCode;
+    responseOut = http_.getString();
+    http_.end();
+    return true;
+  }
+  else
+  {
+    statusCodeOut = httpResponseCode;
+    responseOut = http_.errorToString(httpResponseCode);
+    http_.end();
+    return false;
+  }
+}
+
+String cameraClient::urlEncode(const String &input)
+{
+  const char *hex = "0123456789ABCDEF";
+  String encoded;
+  encoded.reserve(input.length() * 3);
+
+  for (size_t i = 0; i < input.length(); ++i)
+  {
+    unsigned char c = static_cast<unsigned char>(input[i]);
+    bool unreserved = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+                      (c >= '0' && c <= '9') || c == '-' || c == '_' ||
+                      c == '.' || c == '~';
+
+    if (unreserved)
+    {
+      encoded += static_cast<char>(c);
+    }
+    else
+    {
+      encoded += '%';
+      encoded += hex[(c >> 4) & 0x0F];
+      encoded += hex[c & 0x0F];
+    }
+  }
+  return encoded;
+}
+}  // namespace esp32camera
