@@ -3,42 +3,45 @@
 
 #include "camera/CameraWebserver.h"
 #include "config/app_config.h"
+#include "protocol/IIC/IIC_camera.h"
 #include "protocol/http/http_client.h"
 #include "protocol/webSocket/webSocket_client.h"
+
+#define CAMERA_IIC_ADDRESS 0x42
+#define IIC_SCL_PIN 15
+#define IIC_SDA_PIN 14
+#define IIC_FREQUENCY 100000
 
 void setup()
 {
   Serial.begin(115200);
-  Serial.setDebugOutput(true);
-  Serial.println();
 
+  static esp32camera::CameraIIC cameraIIC(CAMERA_IIC_ADDRESS, IIC_SDA_PIN,
+                                          IIC_SCL_PIN, IIC_FREQUENCY);
+  (void)cameraIIC;
   WiFi.mode(WIFI_STA);
-  WiFi.begin(esp32camera::WifiSsid.c_str(), esp32camera::WifiPassword.c_str());
-  uint32_t startMs = millis();
-  while (WiFi.status() != WL_CONNECTED)
+  Serial.println("Connecting to WiFi");
+
+  while (cameraIIC.getSalveStatus().isAllReady != 0x02)
   {
-    Serial.print(".");
     delay(1000);
   }
-  Serial.println("Connected to WiFi!");
-  Serial.printf("IP: %s\n", WiFi.localIP().toString().c_str());
+  esp32camera::CameraPackage cameraPackage = cameraIIC.getCameraPackage();
+  WiFi.begin(cameraPackage.ssid, cameraPackage.password);
+
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    delay(1000);
+    Serial.print(".");
+  }
 
   // Initialize camera only; skip local web server when running as HTTP client.
   cameraInit(false);
 
-  // http client test
-  static esp32camera::clientConfig clientCfg{
-      .serverURL = esp32camera::serverURL,
-      .headValue = esp32camera::headValue,
-      .queryKey = esp32camera::queryKey,
-      .queryValue = esp32camera::queryValue,
-  };
-  static esp32camera::cameraClient camClient(clientCfg);
-
   // websocket client test
-  // static esp32camera::WebsocketClient webSocketClient(
-  //     esp32camera::webSocket_host, esp32camera::webSocket_port,
-  //     esp32camera::webSocket_path);
+  static esp32camera::WebsocketClient webSocketClient(
+      esp32camera::webSocket_host, esp32camera::webSocket_port,
+      esp32camera::webSocket_path);
 }
 
 void loop() {}
