@@ -14,7 +14,7 @@
 void startCameraServer();
 void setupLedFlash();
 
-void cameraInit()
+void cameraInit(bool startWebServer = true)
 {
   camera_config_t config;
   config.ledc_channel = LEDC_CHANNEL_0;
@@ -36,7 +36,7 @@ void cameraInit()
   config.pin_pwdn = PWDN_GPIO_NUM;
   config.pin_reset = RESET_GPIO_NUM;
   config.xclk_freq_hz = 20000000;
-  config.frame_size = FRAMESIZE_SVGA;
+  config.frame_size = FRAMESIZE_VGA;
   config.pixel_format = PIXFORMAT_JPEG;  // for streaming
   // config.pixel_format = PIXFORMAT_RGB565; // for face detection/recognition
   config.grab_mode = CAMERA_GRAB_WHEN_EMPTY;
@@ -75,6 +75,9 @@ void cameraInit()
   pinMode(14, INPUT_PULLUP);
 #endif
 
+  Serial.printf("frame_size: %u, jpeg_quality: %u, fb_count: %u,\n",
+                config.frame_size, config.jpeg_quality, config.fb_count);
+
   // camera init
   esp_err_t err = esp_camera_init(&config);
   if (err != ESP_OK)
@@ -85,7 +88,7 @@ void cameraInit()
 
   sensor_t *s = esp_camera_sensor_get();
   // initial sensors are flipped vertically and colors are a bit saturated
-  if (s->id.PID == OV2640_PID)
+  if (s->id.PID == OV5640_PID)
   {
     s->set_vflip(s, 1);        // flip it back
     s->set_brightness(s, 1);   // up the brightness just a bit
@@ -110,7 +113,10 @@ void cameraInit()
 #if defined(LED_GPIO_NUM)
   setupLedFlash();
 #endif
-  startCameraServer();
+  if (startWebServer)
+  {
+    startCameraServer();
+  }
 }
 
 #endif  // CAMERA_WEBSERVER_H

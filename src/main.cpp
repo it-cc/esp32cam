@@ -2,54 +2,43 @@
 #include <WiFi.h>
 
 #include "camera/CameraWebserver.h"
-#include "protocol/IIC/IIC_camera.h"
-
-#define CAMERA 1
-#if CAMERA == 1
-#define CAMERA_IIC_ADDRESS 0x42
-#elif CAMERA == 2
-#define CAMERA_IIC_ADDRESS 0x43
-#endif
-
-#define IIC_SCL_PIN 15
-#define IIC_SDA_PIN 14
-#define IIC_FREQUENCY 100000
+#include "config/app_config.h"
+#include "protocol/http/http_client.h"
+#include "protocol/webSocket/webSocket_client.h"
 
 void setup()
 {
   Serial.begin(115200);
+  Serial.setDebugOutput(true);
   Serial.println();
 
-  // Keep the IIC slave object alive for the full application lifetime.
-  // static esp32camera::CameraIIC cameraIIC(CAMERA_IIC_ADDRESS, IIC_SDA_PIN,
-  //                                         IIC_SCL_PIN, IIC_FREQUENCY);
-  // (void)cameraIIC;
-
-  // Serial.println("Connecting to WiFi");
-  // while (WiFi.status() != WL_CONNECTED)
-  // {
-  //   esp32camera::CameraPackage cameraPackage = cameraIIC.getCameraPackage();
-  //   WiFi.begin(cameraPackage.ssid, cameraPackage.password);
-  //   delay(2000);
-  //   Serial.print(".");
-  // }
-  // cameraIIC.instance_->salveStatus_.isSetWifi = 0x02;
-  // strncpy(cameraIIC.instance_->salveStatus_.httpUrl, "http://",
-  //         sizeof(cameraIIC.instance_->salveStatus_.httpUrl));
-  // strcat(cameraIIC.instance_->salveStatus_.httpUrl,
-  //        WiFi.localIP().toString().c_str());
-  // Serial.println("Connected to WiFi!");
-  // Serial.print("Access the camera stream at: http://");
-  // Serial.println(WiFi.localIP());
-  WiFi.begin("Redmi", "88889999");
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(esp32camera::WifiSsid.c_str(), esp32camera::WifiPassword.c_str());
+  uint32_t startMs = millis();
   while (WiFi.status() != WL_CONNECTED)
   {
-    Serial.println("...");
+    Serial.print(".");
+    delay(1000);
   }
   Serial.println("Connected to WiFi!");
-  Serial.println(WiFi.localIP().toString());
-  // Start the camera web server.
-  cameraInit();
+  Serial.printf("IP: %s\n", WiFi.localIP().toString().c_str());
+
+  // Initialize camera only; skip local web server when running as HTTP client.
+  cameraInit(false);
+
+  // http client test
+  static esp32camera::clientConfig clientCfg{
+      .serverURL = esp32camera::serverURL,
+      .headValue = esp32camera::headValue,
+      .queryKey = esp32camera::queryKey,
+      .queryValue = esp32camera::queryValue,
+  };
+  static esp32camera::cameraClient camClient(clientCfg);
+
+  // websocket client test
+  // static esp32camera::WebsocketClient webSocketClient(
+  //     esp32camera::webSocket_host, esp32camera::webSocket_port,
+  //     esp32camera::webSocket_path);
 }
 
-void loop() { delay(10000); }
+void loop() {}
