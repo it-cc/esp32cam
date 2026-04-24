@@ -10,7 +10,7 @@ namespace esp32camera
 WebsocketClient::WebsocketClient(const char* webSocket_host,
                                  const int webSocket_port,
                                  const char* webSocket_path)
-    : webSocket_()
+    : webSocket_(), initialized_(false)
 {
   webSocket_.begin(webSocket_host, webSocket_port, webSocket_path);
   webSocket_.onEvent(WebsocketClient::webSocketEvent);
@@ -60,7 +60,16 @@ void WebsocketClient::run()
 {
   if (webSocket_.isConnected())
   {
-    webSocket_.sendTXT(R"({"authorization":1,"position":"0"})");  // JSON
+    Serial.println("Websocket connected");
+    if (!initialized_)
+    {
+      initialized_ = true;
+      int userId = 0;
+      char payload[64];
+      snprintf(payload, sizeof(payload),
+               "{\"authorization\":%d,\"position\":\"180\"}", userId);
+      webSocket_.sendTXT(payload);  // JSON
+    }
     camera_fb_t* fb = esp_camera_fb_get();
     if (fb)
     {

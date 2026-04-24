@@ -14,7 +14,7 @@
 void startCameraServer();
 void setupLedFlash();
 
-void cameraInit(bool startWebServer = true)
+inline bool cameraInit(bool startWebServer = true)
 {
   camera_config_t config;
   config.ledc_channel = LEDC_CHANNEL_0;
@@ -83,12 +83,12 @@ void cameraInit(bool startWebServer = true)
   if (err != ESP_OK)
   {
     Serial.printf("Camera init failed with error 0x%x", err);
-    return;
+    return false;
   }
 
   sensor_t *s = esp_camera_sensor_get();
   // initial sensors are flipped vertically and colors are a bit saturated
-  if (s->id.PID == OV5640_PID)
+  if (s->id.PID == OV2640_PID)
   {
     s->set_vflip(s, 1);        // flip it back
     s->set_brightness(s, 1);   // up the brightness just a bit
@@ -117,6 +117,7 @@ void cameraInit(bool startWebServer = true)
   {
     startCameraServer();
   }
+  return true;
 }
 
 #endif  // CAMERA_WEBSERVER_H

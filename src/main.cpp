@@ -24,7 +24,8 @@ void setup()
 
   while (cameraIIC.getSalveStatus().isAllReady != 0x02)
   {
-    delay(1000);
+    delay(500);
+    Serial.println("Waiting for camera package...");
   }
   esp32camera::CameraPackage cameraPackage = cameraIIC.getCameraPackage();
   WiFi.begin(cameraPackage.ssid, cameraPackage.password);
@@ -34,14 +35,26 @@ void setup()
     delay(1000);
     Serial.print(".");
   }
+  Serial.println("Connected to WiFi");
 
   // Initialize camera only; skip local web server when running as HTTP client.
-  cameraInit(false);
-
+  bool cameraInitialized = cameraInit(false);
+  if (!cameraInitialized)
+  {
+    Serial.println("Camera initialization failed");
+    return;
+  }
+  else
+  {
+    Serial.println("Camera initialization succeeded");
+  }
   // websocket client test
-  static esp32camera::WebsocketClient webSocketClient(
-      esp32camera::webSocket_host, esp32camera::webSocket_port,
-      esp32camera::webSocket_path);
+  if (cameraInitialized)
+  {
+    static esp32camera::WebsocketClient webSocketClient(
+        esp32camera::webSocket_host, esp32camera::webSocket_port,
+        esp32camera::webSocket_path);
+  }
 }
 
 void loop() {}
