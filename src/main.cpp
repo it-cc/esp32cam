@@ -12,6 +12,19 @@
 #define IIC_SDA_PIN 14
 #define IIC_FREQUENCY 100000
 
+void wifiMonitorTask(void* pvParameters)
+{
+  while (true)
+  {
+    vTaskDelay(pdMS_TO_TICKS(10000));
+    if (WiFi.status() != WL_CONNECTED)
+    {
+      Serial.println("WiFi disconnected, attempting to reconnect...");
+      WiFi.reconnect();
+    }
+  }
+}
+
 void setup()
 {
   Serial.begin(115200);
@@ -35,7 +48,8 @@ void setup()
     delay(1000);
     Serial.print(".");
   }
-  Serial.println("Connected to WiFi");
+  Serial.println("\nConnected to WiFi");
+  WiFi.setAutoReconnect(true);
 
   // Initialize camera only; skip local web server when running as HTTP client.
   bool cameraInitialized = cameraInit(false);
@@ -55,6 +69,11 @@ void setup()
         esp32camera::webSocket_host, esp32camera::webSocket_port,
         esp32camera::webSocket_path);
   }
+
+  xTaskCreate(wifiMonitorTask, "WiFiMonitorTask", 4096, NULL, 1, NULL);
 }
 
-void loop() {}
+void loop()
+{
+  vTaskDelay(portMAX_DELAY);  // 把原 loop 内的代码清空，挂起默认的 loop 任务
+}

@@ -31,7 +31,7 @@ WebsocketClient::WebsocketClient(const char* webSocket_host,
           vTaskDelay(pdMS_TO_TICKS(1));
         }
       },
-      "WebsocketClientTask", 8192, this, 1, nullptr);
+      "WebsocketClientTask", 8192, this, 15, nullptr);
 }
 
 void WebsocketClient::webSocketEvent(WStype_t type, uint8_t* payload,
@@ -61,9 +61,11 @@ void WebsocketClient::run()
   if (webSocket_.isConnected())
   {
     Serial.println("Websocket connected");
-    if (!initialized_)
+    static uint32_t last_txt_send = 0;
+    if (!initialized_ || millis() - last_txt_send >= 3000)
     {
       initialized_ = true;
+      last_txt_send = millis();
       int userId = 0;
       char payload[64];
       snprintf(payload, sizeof(payload),
@@ -83,7 +85,12 @@ void WebsocketClient::run()
   }
   else
   {
-    Serial.println("Websocket not connected");
+    static uint32_t last_noconnect_log = 0;
+    if (millis() - last_noconnect_log >= 1000)
+    {
+      last_noconnect_log = millis();
+      Serial.println("Websocket not connected");
+    }
   }
 }
 

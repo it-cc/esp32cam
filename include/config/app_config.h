@@ -5,12 +5,12 @@
 
 namespace esp32camera
 {
-static const String WifiSsid = "Redmi";
-static const String WifiPassword = "88889999";
-static const String serverURL = "http://8.134.80.198:8899/ai/camera";
-static const String headValue = "1";
-static const String queryKey = "position";
-static const int queryValue = 0;
+// static const String WifiSsid = "Redmi";
+// static const String WifiPassword = "88889999";
+// static const String serverURL = "http://8.134.80.198:8899/ai/camera";
+// static const String headValue = "1";
+// static const String queryKey = "position";
+// static const int queryValue = 0;
 
 static const char* webSocket_host = "8.134.80.198";
 static const int webSocket_port = 8899;
